@@ -3,11 +3,13 @@ import 'milligram';
 import { uniqDigits } from './util';
 import { ch_join, ch_push_guess, ch_set_callback, ch_push_update_role, ch_ready, ch_leave } from './socket'
 
+// Text fields for logging in (user name and game name)
 function Login() {
   const [name, setName] = useState("");
   const [game, setGame] = useState("");
 
   function keypress(ev) {
+    // Only allow login if there are entries in both fields
     if (ev.key == "Enter" && name.length > 0 && game.length > 0) {
       ch_join(game, name);
     }
@@ -40,15 +42,20 @@ function Login() {
   );
 }
 
+// Lobby component, where users join/leave, ready/unready, and switch roles
 function Lobby({ props }) {
+
+  // Update the user's role to whatever the radio input was changed to
   function updateUserRole(ev) {
     ch_push_update_role(ev.target.value);
   }
 
+  // Ready or unready (depending which state preceded this call)
   function setReady(ready) {
     ch_ready(ready);
   }
 
+  // Leave the game
   function leaveGame() {
     ch_leave();
   }
@@ -101,6 +108,7 @@ function Lobby({ props }) {
   );
 }
 
+// Game component, handling mainly input (also nests View component)
 function Game({ props }) {
   const [guess, setGuess] = useState("");
 
@@ -125,15 +133,18 @@ function Game({ props }) {
     setGuess("");
   }
 
+  // Send "pass" as the guess. The server knows how to handle it.
   function pass() {
     ch_push_guess("pass");
     setGuess("");
   }
 
+  // Cannot guess if input is locked or we haven't typed a sufficient guess yet
   function cannotGuess() {
     return cannotInput() || guess.length !== props["secret_len"];
   }
 
+  // Input is locked if we are waiting for other players
   function cannotInput() {
     return props["locked_guess"];
   }
@@ -173,9 +184,11 @@ function Game({ props }) {
   );
 }
 
+// Renders the grid of players, along with their guesses/results
 function View({ players, name }) {
   const playersPerRow = 4;
 
+  // Render a row of players (1-4)
   function playerColumns(key, players) {
     return (
       <div>
@@ -201,6 +214,7 @@ function View({ players, name }) {
     )
   }
 
+  // Render the guess/result grid for a player
   function guessGridFor(player) {
     let guessRows = [];
     const guesses = player["guesses"];
@@ -223,6 +237,7 @@ function View({ players, name }) {
     return guessRows;
   }
 
+  // Render players in chunks (4 players per row)
   let rows = [];
   for (let i = 0; i < players.length / 4; i++) {
     rows.push(playerColumns(i, players.slice(playersPerRow * i, playersPerRow * (i + 1))));
@@ -249,6 +264,7 @@ function View({ players, name }) {
   );
 }
 
+// Display the winner(s) of the previous game if applicable
 function GameOver({ winners }) {
   return (
     <div>
@@ -266,9 +282,11 @@ function GameOver({ winners }) {
   );
 }
 
+// Render the leaderboard if it exists
 function Leaderboard({ leaderboard }) {
-  const LEADERBOARD_HEIGHT = 10;
+  const LEADERBOARD_HEIGHT = 10; // Arbitrary # to limit leaderboard size on frontend
 
+  // Sort the leaderboard, then display in grid
   let leaderboardAsArray = [];
   Object.keys(leaderboard).forEach((player) => {
     leaderboardAsArray.push([player, leaderboard[player]]);
@@ -276,7 +294,6 @@ function Leaderboard({ leaderboard }) {
 
   leaderboardAsArray.sort((a, b) => b[1]["wins"] - a[1]["wins"]);
 
-  console.log(leaderboardAsArray)
   return leaderboardAsArray.length > 0 ?
     <div className="row">
       <div className="column column-34 column-offset-33">
@@ -320,6 +337,7 @@ function Leaderboard({ leaderboard }) {
     : null;
 }
 
+// Root component, renders above components based on app state
 export function Bulls() {
   const [state, setState] = useState({});
 

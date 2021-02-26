@@ -55,7 +55,6 @@ defmodule BullsMp.GameServer do
   # implementation
 
   def init(game) do
-    # Process.send_after(self(), :pook, 10_000)
     {:ok, game}
   end
 
@@ -69,6 +68,8 @@ defmodule BullsMp.GameServer do
     round1 = game.round
     game = BullsMp.Game.guess(game, user, g)
     round2 = game.round
+
+    # Reset/start timer if round is over
     if round2 != round1 and game.timer do
       Process.cancel_timer(game.timer)
     end
@@ -89,6 +90,8 @@ defmodule BullsMp.GameServer do
     round1 = game.round
     game = BullsMp.Game.update_role(game, user, role)
     round2 = game.round
+
+    # Reset/start timer if round is over
     game = if round2 > round1 do
       Map.put(game, :timer, Process.send_after(self(), :end_round, game.turn_millis))
     else
@@ -102,6 +105,8 @@ defmodule BullsMp.GameServer do
     round1 = game.round
     game = BullsMp.Game.ready(game, user, ready)
     round2 = game.round
+
+    # Reset/start timer if round is over
     game = if round2 > round1 do
       Map.put(game, :timer, Process.send_after(self(), :end_round, game.turn_millis))
     else
@@ -115,6 +120,8 @@ defmodule BullsMp.GameServer do
     round1 = game.round
     game = BullsMp.Game.leave(game, user)
     round2 = game.round
+
+    # Reset/start timer if round is over
     if round2 != round1 and game.timer do
       Process.cancel_timer(game.timer)
     end
@@ -127,11 +134,8 @@ defmodule BullsMp.GameServer do
     {:reply, game, game}
   end
 
+  # If timer expires, manually end the round
   def handle_info(:end_round, game) do
-    if game.timer do
-      IO.inspect "cancelling timer in handler"
-      Process.cancel_timer(game.timer)
-    end
     game = BullsMp.Game.end_round(game)
     |> Map.put(:timer, Process.send_after(self(), :end_round, game.turn_millis))
     BullsMp.BackupAgent.put(game.game, game)
@@ -142,13 +146,4 @@ defmodule BullsMp.GameServer do
     )
     {:noreply, game}
   end
-
-  # def handle_info(:pook, game) do
-  #   game = BullsMp.Game.guess(game, "q")
-  #   BullsMpWeb.Endpoint.broadcast!(
-  #     "game:1", # FIXME: Game name should be in state
-  #     "view",
-  #     BullsMp.Game.view(game, ""))
-  #   {:noreply, game}
-  # end
 end

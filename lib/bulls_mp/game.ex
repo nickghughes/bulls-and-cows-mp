@@ -16,6 +16,7 @@ defmodule BullsMp.Game do
     }
   end
 
+  # Add a user to the game. Default role depends on game state (player if in lobby, spectator if in game)
   def login(st, user) do
     if Enum.any?(st.users, fn x -> x.name == user end) do
       st
@@ -25,27 +26,16 @@ defmodule BullsMp.Game do
     end
   end
 
+  # Update a user's role in the lobby
   def update_role(st, user, role) do
-    players = Enum.filter(st.users, fn x -> x[:role] == :player end)
-    round = if st.round == 0 and length(players) > 0 and Enum.all?(players, fn x -> x[:ready] end) do
-      st.round + 1
-    else
-      st.round
-    end
-    %{st | users: Enum.map(st.users, fn 
-        %{name: ^user} -> %{name: user, ready: false, role: role, guesses: [], results: []}
-        x -> x
-      end
-    ), round: round}
-  end
-
-  def ready(st, user, ready) do
     users = Enum.map(st.users, fn 
-        %{name: ^user, role: role} -> %{name: user, ready: ready, role: role, guesses: [], results: []}
+        %{name: ^user} -> %{name: user, ready: false, role: role, guesses: [], results: []}
         x -> x
       end
     )
     players = Enum.filter(users, fn x -> x[:role] == :player end)
+
+    # If this leaves all remaining players ready, start the game
     round = if st.round == 0 and length(players) > 0 and Enum.all?(players, fn x -> x[:ready] end) do
       st.round + 1
     else
@@ -54,15 +44,37 @@ defmodule BullsMp.Game do
     %{st | users: users, round: round}
   end
 
+  # Ready/unready a user in the lobby
+  def ready(st, user, ready) do
+    users = Enum.map(st.users, fn 
+        %{name: ^user, role: role} -> %{name: user, ready: ready, role: role, guesses: [], results: []}
+        x -> x
+      end
+    )
+    players = Enum.filter(users, fn x -> x[:role] == :player end)
+    # If all users are now ready, start the game
+    round = if st.round == 0 and length(players) > 0 and Enum.all?(players, fn x -> x[:ready] end) do
+      st.round + 1
+    else
+      st.round
+    end
+    %{st | users: users, round: round}
+  end
+
+  # Remove a user from the game
   def leave(st, user) do
+    # Delete the user from the user list
     users = List.delete(st.users, user_record_for(st, user))
     players = Enum.filter(users, fn x -> x[:role] == :player end)
+
+    # If this leaves all remaining players ready, start the game
     round = if st.round == 0 and length(players) > 0 and Enum.all?(players, fn x -> x[:ready] end) do
       st.round + 1
     else
       st.round
     end
     state = %{st | users: users, round: round}
+    # End the round if all remaining players have guessed
     if length(state.locked_guesses) == length(Enum.filter(state.users, fn x -> x[:role] == :player end)) do
       end_round(state)
     else
@@ -112,6 +124,7 @@ defmodule BullsMp.Game do
     else 
       # update the state accordingly
       state = %{st | locked_guesses: st.locked_guesses ++ [%{name: user, guess: guess}]}
+      # If this was the last player to guess, end the round
       if length(state.locked_guesses) == length(Enum.filter(state.users, fn x -> x[:role] == :player end)) do
         end_round(state)
       else
@@ -146,6 +159,7 @@ defmodule BullsMp.Game do
     "A" <> a <> "B" <> b
   end
 
+  # End the current round by moving current guesses to overall state, then checking for winners
   def end_round(st) do
     if length(st.locked_guesses) == 0 do
       check_for_winners(%{st | round: st.round + 1})
@@ -162,6 +176,7 @@ defmodule BullsMp.Game do
     end
   end
 
+  # Check if there are winners. If not, return the state. Otherwise, start a new game with an updated leaderboard and the same players.
   def check_for_winners(st) do
     winners = st.users
     |> Enum.filter(fn x -> List.last(x[:guesses]) == st.secret end) 
@@ -174,12 +189,15 @@ defmodule BullsMp.Game do
     end
   end
 
+  # Update the game leaderboard after a game ends
   def new_leaderboard(leaderboard, users, winners) do
     players = Enum.filter(users, fn x -> x[:role] == :player end)
     leaderboard
     |> add_new_players_to_leaderboard(players)
     |> update_leaderboard(Enum.map(players, fn x -> x[:name] end), winners)
   end
+
+  # Increment win/loss totals for all players who participated in the last game
 
   defp update_leaderboard(leaderboard, [], []) do
     leaderboard
@@ -201,6 +219,8 @@ defmodule BullsMp.Game do
     |> Map.replace(first_winner, leaderboard_entry)
     |> update_leaderboard(List.delete_at(players, players_match_idx), others)
   end
+
+  # Fill in users that are not yet on the leaderboard
 
   defp add_new_players_to_leaderboard(leaderboard, []) do
     leaderboard

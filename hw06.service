@@ -1,5 +1,5 @@
 [Unit]
-Description=HW05 Server-Side Game Logic
+Description=HW06 Multiplayer Bulls and Cows
 
 [Service]
 Type=simple
@@ -7,12 +7,12 @@ User=practicesix
 Group=practicesix
 Restart=on-failure
 Environment=MIX_ENV=prod
-Environment=PORT=4444
+Environment=PORT=4789
 Environment=PROD=true
 Environment=LANG=en_US.UTF-8
 
-WorkingDirectory=/home/practicefive/bulls-and-cows-mp
-ExecStart=/bin/bash /home/practicefive/bulls-and-cows-mp/start.sh
+WorkingDirectory=/home/practicesix/bulls-and-cows-mp
+ExecStart=/bin/bash /home/practicesix/bulls-and-cows-mp/start.sh
 
 [Install]
 WantedBy=multi-user.target

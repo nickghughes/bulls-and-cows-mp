@@ -27,6 +27,7 @@ defmodule BullsMpWeb.GameChannel do
     |> GameServer.guess(user, g)
     view = game
     |> Game.view(user)
+    # Broadcast if the round ended
     unless view.locked_guess do
       broadcast(socket, "update_players", Map.merge(BullsMp.Game.view(game, nil), %{locked_guess: nil}))
     end
@@ -49,6 +50,7 @@ defmodule BullsMpWeb.GameChannel do
     view = socket.assigns[:name]
     |> GameServer.ready(user, r)
     |> Game.view(user)
+    # Broadcast if the game is starting
     if view.in_game do
       broadcast(socket, "update_players", %{ players: view.players, spectators: view.spectators, in_game: true })
     end
@@ -62,6 +64,7 @@ defmodule BullsMpWeb.GameChannel do
     |> GameServer.leave(user)
     view = game
     |> Game.view(nil)
+    # If the leaver was the last player to not guess, broadcast that the round has ended
     view = if length(game.locked_guesses) == 0 do
       Map.put(view, :locked_guess, nil)
     else

@@ -23,6 +23,8 @@ function state_update(st) {
   }
 }
 
+// Join and login (since the landing page prompts the user for both)
+// After joining the channel, start listening for broadcasts
 export function ch_join(game, name) {
   channel = socket.channel(`game:${game}`, { name });
   channel.join()
@@ -35,6 +37,7 @@ export function ch_join(game, name) {
     .receive("error", resp => { console.log("Unable to join", resp) });
 }
 
+// Patch the state with whatever properties are in the payload (can vary based on event)
 function update_players(payload) {
   if (payload["in_game"] == false && state["in_game"]) {
     payload["ready"] = false;
@@ -43,34 +46,28 @@ function update_players(payload) {
   state_update(st);
 }
 
+// Push a guess to the channel
 export function ch_push_guess(guess) {
   channel.push("guess", { "guess": guess })
     .receive("ok", state_update)
     .receive("error", resp => { console.log("Unable to push", resp) });
 }
 
-export function ch_push_reset() {
-  channel.push("reset", {})
-    .receive("ok", state_update)
-    .receive("error", resp => { console.log("Unable to push", resp) });
-}
-
-export function ch_set_callback(cb) {
-  callback = cb;
-}
-
+// Switch between player and spectator
 export function ch_push_update_role(role) {
   channel.push("role", { "role": role })
     .receive("ok", state_update)
     .receive("error", resp => { console.log("Unable to push", resp) });
 }
 
+// Ready/unready in the lobby
 export function ch_ready(ready)  {
   channel.push("ready", {"ready": ready })
     .receive("ok", state_update)
     .receive("error", resp => { console.log("Unable to push", resp) });
 }
 
+// Leave the server
 export function ch_leave()  {
   channel.push("leave")
     .receive("ok", (state) => {
@@ -78,6 +75,10 @@ export function ch_leave()  {
       channel.leave();
     })
     .receive("error", resp => { console.log("Unable to push", resp) });
+}
+
+export function ch_set_callback(cb) {
+  callback = cb;
 }
 
 export default socket;
