@@ -67,13 +67,21 @@ defmodule BullsMp.Game do
     users = List.delete(st.users, user_record_for(st, user))
     players = Enum.filter(users, fn x -> x[:role] == :player end)
 
+    handle_leave(%{st | users: users}, players)
+  end
+
+  defp handle_leave(st, []) do
+    %{new(st.game, st.leaderboard) | timer: st.timer}
+  end
+
+  defp handle_leave(st, players) do
     # If this leaves all remaining players ready, start the game
     round = if st.round == 0 and length(players) > 0 and Enum.all?(players, fn x -> x[:ready] end) do
       st.round + 1
     else
       st.round
     end
-    state = %{st | users: users, round: round}
+    state = %{st | round: round}
     # End the round if all remaining players have guessed
     if length(state.locked_guesses) == length(Enum.filter(state.users, fn x -> x[:role] == :player end)) do
       end_round(state)
